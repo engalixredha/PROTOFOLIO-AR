@@ -347,7 +347,7 @@
   }
   .marquee-track{
     display:inline-flex;
-    animation:scroll 64s linear infinite;
+    animation:scroll 32s linear infinite;
   }
   @media (prefers-reduced-motion: reduce){ .marquee-track{ animation:none; } }
   .marquee-track span{
@@ -837,13 +837,9 @@
 
   <div class="marquee">
     <div class="marquee-track" id="marqueeTrack">
-      <!-- Pure CSS/HTML marquee, no JS required. 8 identical sets (an even
-           number) keep the 0% → -50% animation loop seamless on any screen
-           width, including ultra-wide desktop displays. -->
-      <span>PYTHON</span><span>C++</span><span>JAVASCRIPT</span><span>NODE.JS</span><span>HTML / CSS</span><span>SYSTEM DESIGN</span><span>HARDWARE-SOFTWARE INTEGRATION</span><span>TELECOM SYSTEMS</span><span>GRAPHIC DESIGN</span><span>PROJECT COORDINATION</span><span class="marquee-logo" aria-label="MediTrack"><svg viewBox="0 0 3330 850"><use href="#marquee-logo-mark"></use></svg></span>
-      <span>PYTHON</span><span>C++</span><span>JAVASCRIPT</span><span>NODE.JS</span><span>HTML / CSS</span><span>SYSTEM DESIGN</span><span>HARDWARE-SOFTWARE INTEGRATION</span><span>TELECOM SYSTEMS</span><span>GRAPHIC DESIGN</span><span>PROJECT COORDINATION</span><span class="marquee-logo" aria-label="MediTrack"><svg viewBox="0 0 3330 850"><use href="#marquee-logo-mark"></use></svg></span>
-      <span>PYTHON</span><span>C++</span><span>JAVASCRIPT</span><span>NODE.JS</span><span>HTML / CSS</span><span>SYSTEM DESIGN</span><span>HARDWARE-SOFTWARE INTEGRATION</span><span>TELECOM SYSTEMS</span><span>GRAPHIC DESIGN</span><span>PROJECT COORDINATION</span><span class="marquee-logo" aria-label="MediTrack"><svg viewBox="0 0 3330 850"><use href="#marquee-logo-mark"></use></svg></span>
-      <span>PYTHON</span><span>C++</span><span>JAVASCRIPT</span><span>NODE.JS</span><span>HTML / CSS</span><span>SYSTEM DESIGN</span><span>HARDWARE-SOFTWARE INTEGRATION</span><span>TELECOM SYSTEMS</span><span>GRAPHIC DESIGN</span><span>PROJECT COORDINATION</span><span class="marquee-logo" aria-label="MediTrack"><svg viewBox="0 0 3330 850"><use href="#marquee-logo-mark"></use></svg></span>
+      <!-- Static fallback (renders even without JS). An even number of identical
+           sets keeps the 0% → -50% loop seamless; the script below rebuilds this
+           with exactly enough sets to fill any screen width with no empty gap. -->
       <span>PYTHON</span><span>C++</span><span>JAVASCRIPT</span><span>NODE.JS</span><span>HTML / CSS</span><span>SYSTEM DESIGN</span><span>HARDWARE-SOFTWARE INTEGRATION</span><span>TELECOM SYSTEMS</span><span>GRAPHIC DESIGN</span><span>PROJECT COORDINATION</span><span class="marquee-logo" aria-label="MediTrack"><svg viewBox="0 0 3330 850"><use href="#marquee-logo-mark"></use></svg></span>
       <span>PYTHON</span><span>C++</span><span>JAVASCRIPT</span><span>NODE.JS</span><span>HTML / CSS</span><span>SYSTEM DESIGN</span><span>HARDWARE-SOFTWARE INTEGRATION</span><span>TELECOM SYSTEMS</span><span>GRAPHIC DESIGN</span><span>PROJECT COORDINATION</span><span class="marquee-logo" aria-label="MediTrack"><svg viewBox="0 0 3330 850"><use href="#marquee-logo-mark"></use></svg></span>
       <span>PYTHON</span><span>C++</span><span>JAVASCRIPT</span><span>NODE.JS</span><span>HTML / CSS</span><span>SYSTEM DESIGN</span><span>HARDWARE-SOFTWARE INTEGRATION</span><span>TELECOM SYSTEMS</span><span>GRAPHIC DESIGN</span><span>PROJECT COORDINATION</span><span class="marquee-logo" aria-label="MediTrack"><svg viewBox="0 0 3330 850"><use href="#marquee-logo-mark"></use></svg></span>
@@ -1173,6 +1169,91 @@
     } catch(e) {
       document.body.removeChild(tempDiv);
     }
+  })();
+</script>
+<script>
+  // Marquee — rebuild with exactly enough repeated sets so the track is always
+  // wider than the viewport. This guarantees no empty gap ever appears, on any
+  // screen size, including ultra-wide displays and window resizing.
+  (function(){
+    const track = document.getElementById('marqueeTrack');
+    if(!track) return;
+
+    const items = [
+      'PYTHON', 'C++', 'JAVASCRIPT', 'NODE.JS', 'HTML / CSS', 'SYSTEM DESIGN',
+      'HARDWARE-SOFTWARE INTEGRATION', 'TELECOM SYSTEMS', 'GRAPHIC DESIGN', 'PROJECT COORDINATION'
+    ];
+    const SPEED = 58; // px per second — keeps scroll speed constant regardless of set count
+
+    function appendTextSpan(parent, text){
+      const span = document.createElement('span');
+      span.textContent = text;
+      parent.appendChild(span);
+    }
+    function appendLogoSpan(parent){
+      const span = document.createElement('span');
+      span.className = 'marquee-logo';
+      span.setAttribute('aria-label', 'MediTrack');
+      span.innerHTML = '<svg viewBox="0 0 3330 850"><use href="#marquee-logo-mark"></use></svg>';
+      parent.appendChild(span);
+    }
+    function appendSet(parent){
+      items.forEach((text, i) => {
+        appendTextSpan(parent, text);
+        // MediTrack logo appears mid-set and end-of-set, so it shows up often
+        if(i === 4 || i === items.length - 1) appendLogoSpan(parent);
+      });
+    }
+
+    function rebuild(){
+      const container = track.parentElement;
+      const containerWidth = container ? container.clientWidth : window.innerWidth;
+
+      // Build sets off-DOM until their combined width covers the visible bar
+      const probe = document.createElement('div');
+      probe.style.cssText = 'position:absolute; visibility:hidden; left:-99999px; top:0; white-space:nowrap; display:inline-flex;';
+      probe.className = 'marquee-track';
+      document.body.appendChild(probe);
+
+      // Generous overshoot (1.5x viewport + fixed margin) so the seam never
+      // runs out of content, even right after a logo/font swap changes widths.
+      const targetWidth = containerWidth * 1.5 + 200;
+      let setWidth = 0;
+      let safety = 0;
+      do {
+        appendSet(probe);
+        setWidth = probe.getBoundingClientRect().width;
+        safety++;
+      } while (setWidth < targetWidth && safety < 40);
+
+      // Two identical halves keep the 0% → -50% loop perfectly seamless,
+      // and each half is already guaranteed >= the visible width.
+      track.style.animation = 'none';
+      track.innerHTML = probe.innerHTML + probe.innerHTML;
+      document.body.removeChild(probe);
+
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if(reduceMotion){
+        track.style.animation = 'none';
+      } else {
+        const duration = Math.max(setWidth / SPEED, 10);
+        // Force reflow so the animation restarts cleanly after rebuilding
+        void track.offsetWidth;
+        track.style.animation = `scroll ${duration}s linear infinite`;
+      }
+    }
+
+    rebuild();
+    window.addEventListener('load', rebuild);
+    if(document.fonts && document.fonts.ready){
+      document.fonts.ready.then(rebuild);
+    }
+
+    let resizeTimer;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(rebuild, 200);
+    });
   })();
 </script>
 <script>
